@@ -1,2 +1,2 @@
-# awsps
+# awsenv
 AWS cli profile switcher

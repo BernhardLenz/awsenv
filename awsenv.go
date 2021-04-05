@@ -3,7 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
-	"ini"
+	"github.com/BernhardLenz/ini"
 	"log"
 	"os"
 	"os/user"
