@@ -1,3 +1,7 @@
-module github.com/BernhardLenz/awsps
+module github.com/BernhardLenz/awsenv
 
 go 1.16
+
+replace github.com/BernhardLenz/ini => ../ini
+
+require github.com/BernhardLenz/ini v0.0.0-00010101000000-000000000000

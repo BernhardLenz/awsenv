@@ -12,7 +12,13 @@ import (
 	"time"
 )
 
-var usr *user.User
+//TODO: support other keys than aws_access_key_id such as metadata_service_timeout
+//TODO: support path to config and credential files AWS_CONFIG_FILE AWS_SHARED_CREDENTIALS_FILE
+//TODO: improve printing of default configs as part of a profile line
+//TODO: support export of e.g. AWS_CCESS_KEY_ID
+//TODO: support printing of key as ****************NXWA
+//TODO: Add versioning and printing of version
+//TODO: Write test cases
 
 type Profile struct {
 	aws_access_key_id     string
@@ -37,12 +43,6 @@ var credentialsFile *ini.File
 var configFile *ini.File
 
 func main() {
-
-	var err error
-	usr, err = user.Current()
-	if err != nil {
-		log.Fatal(err)
-	}
 
 	listCommand := flag.NewFlagSet("list", flag.ExitOnError)
 	activateCommand := flag.NewFlagSet("activate", flag.ExitOnError)
@@ -109,18 +109,21 @@ func printUsage() {
 	fmt.Println(" Lists all available profiles.")
 	fmt.Printf("%s activate <profile>\n", filepath.Base(os.Args[0]))
 	fmt.Println(" Activates a given profile.")
+	fmt.Println("")
+	fmt.Println("To create a new profile use 'aws configure''")
 } //printUsage
 
 func parse() {
 
 	ini.DefaultSection = "default"
 
-	var err error
-	credentialsFile, err = ini.Load(usr.HomeDir + "/.aws/credentials")
-	if err != nil {
-		fmt.Printf("Failed to read file: %v", err)
-		os.Exit(1)
-	}
+	parseCredentials()
+	parseConfig()
+
+} //parse
+
+func parseCredentials() {
+	credentialsFile = loadIni(getCredentialFilePath())
 
 	defaultCredentialsSection := credentialsFile.Section(ini.DefaultSection)
 
@@ -172,23 +175,25 @@ func parse() {
 			}
 		}
 	}
+} //parseCredentials
 
-	configFile, err := ini.Load(usr.HomeDir + "/.aws/config")
+func parseConfig() {
+
+	configFile = loadIni(getConfigFilePath())
+
+	configFile, err := ini.Load(getConfigFilePath())
 	if err != nil {
 		fmt.Printf("Failed to read file: %v", err)
 		os.Exit(1)
 	}
 
-	//defaultConfigSection := configFile.Section(ini.DefaultSection)
-
 	for _, configSection := range configFile.Sections() {
-		//fmt.Printf("Section sectionName: %s\n", sectionName)
 		var config Config
 		sectionName := configSection.Name()
 		for _, key := range configSection.Keys() {
 			keyName := key.Name()
 			value := key.Value()
-			if "DEFAULT" == sectionName {
+			if "default" == sectionName {
 				if "output" == keyName {
 					defaultConfig.output = value
 					defaultProfile.output = value
@@ -198,9 +203,6 @@ func parse() {
 				}
 			} else {
 				profile, ok := profiles[sectionName]
-				//fmt.Printf("sectionName: %s\n", sectionName)
-				//fmt.Printf("profile: %s\n", profile)
-				//fmt.Printf("ok: %s\n", ok)
 				if ok {
 					if "output" == keyName {
 						profile.output = value
@@ -221,8 +223,6 @@ func parse() {
 			foundProfileForDefault = true
 			profile.isActive = true
 			profiles[sectionName] = profile
-			//fmt.Printf("In foundProfileForDefault\n")
-			//fmt.Printf("profile: %s\n", profile)
 			break
 		}
 	}
@@ -230,14 +230,49 @@ func parse() {
 	if !foundProfileForDefault && defaultProfile.isActive {
 		profiles["default"] = defaultProfile
 	}
-} //parse
+} //parseConfig
+
+func loadIni(fileName string) *ini.File {
+	file, err := ini.Load(fileName)
+	if err != nil {
+		log.Fatal("Failed to read file: %v", err)
+		os.Exit(1)
+	}
+	return file
+} //loadIni
+
+func getCredentialFilePath() string {
+	return getAwsCliFilePath("AWS_SHARED_CREDENTIALS_FILE", "credentials")
+} //getCredentialFilePath
+
+func getConfigFilePath() string {
+	return getAwsCliFilePath("AWS_CONFIG_FILE", "config")
+} //getConfigFilePath
+
+func getAwsCliFilePath(ENV string, fileName string) string {
+	ENVVAL := os.Getenv(ENV)
+	if ENVVAL != "" {
+		return ENVVAL + "/" + fileName
+	}
+
+	return getUser().HomeDir + "/.aws/" + fileName
+} //getAwsCliFilePath
+
+func getUser() *user.User {
+	usr, err := user.Current()
+	if err != nil {
+		log.Fatal(err)
+		os.Exit(1)
+	}
+	return usr
+} //getUser
 
 func listProfiles(profiles map[string]Profile) {
 
 	activeLength := 2
 	nameLength := 20
 	awsAccessKeyIdLength := 20
-	regionLength := 10
+	regionLength := 15
 	outputLength := 10
 
 	fmt.Printf(fs(activeLength), " ")
@@ -314,7 +349,7 @@ func setDefaultProfile(fromSectionName string) {
 		defaultSection.NewKey(keyName, value)
 	}
 
-	credentialsFile.SaveTo(usr.HomeDir + "/.aws/credentials")
+	credentialsFile.SaveTo(getUser().HomeDir + "/.aws/credentials")
 
 	fmt.Printf("Activated Profile '%s'\n\n", fromSectionName)
 
