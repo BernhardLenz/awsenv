@@ -12,15 +12,16 @@ import (
 	"time"
 )
 
-//TODO: support other keys than aws_access_key_id such as metadata_service_timeout
-//TODO: support path to config and credential files AWS_CONFIG_FILE AWS_SHARED_CREDENTIALS_FILE
-//TODO: improve printing of default configs as part of a profile line
-//TODO: support export of e.g. AWS_CCESS_KEY_ID
-//TODO: support printing of key as ****************NXWA
+//TODO: test other keys than aws_access_key_id such as metadata_service_timeout in activate
+//TODO: test support path to config and credential files AWS_CONFIG_FILE AWS_SHARED_CREDENTIALS_FILE
+//TODO: test printing of default configs as part of a profile line
+//TODO: test export of e.g. AWS_CCESS_KEY_ID
 //TODO: Add versioning and printing of version
 //TODO: Write test cases
+//TODO: comment methods
 
 type Profile struct {
+	profileName           string
 	aws_access_key_id     string
 	aws_secret_access_key string
 	output                string
@@ -100,6 +101,8 @@ func main() {
 		setDefaultProfile(activateProfileName)
 
 		listProfiles(profiles)
+
+		setEnvironmentVariables()
 	}
 } //main
 
@@ -128,28 +131,24 @@ func parseCredentials() {
 	defaultCredentialsSection := credentialsFile.Section(ini.DefaultSection)
 
 	for _, credentialsSection := range credentialsFile.Sections() {
-		//fmt.Printf("Section sectionName: %s\n", sectionName)
-		var profile Profile
 		sectionName := credentialsSection.Name()
+
+		var profile Profile
+		profile.profileName = sectionName
+
 		for _, key := range credentialsSection.Keys() {
 			keyName := key.Name()
 			value := key.Value()
-			//fmt.Printf("%s => %s\n", key, value)
 			if "aws_access_key_id" == keyName {
 				profile.aws_access_key_id = value
 			} else if "aws_secret_access_key" == keyName {
 				profile.aws_secret_access_key = value
 			}
-			//fmt.Printf("Default Profile: %s\n", defaultProfile.aws_access_key_id)
-			//fmt.Printf("Default Profile: %s\n", defaultProfile.aws_secret_access_key)
 		}
 		if "default" != sectionName {
 			if profile.aws_access_key_id == defaultCredentialsSection.Key("aws_access_key_id").Value() {
 				profile.isActive = true
 				defaultProfile = profile
-				//fmt.Printf("In default\n")
-				//fmt.Printf("profile: %s\n", profile)
-				//fmt.Printf("defaultProfile: %s\n", defaultProfile)
 			}
 			profiles[sectionName] = profile
 		} else {
@@ -292,34 +291,97 @@ func listProfiles(profiles map[string]Profile) {
 			fmt.Printf("  ")
 		}
 		fmt.Printf(fs(nameLength), sectionName)
-		trunc(sectionName, nameLength)
+		truncPrintf(sectionName, nameLength)
 
-		fmt.Printf(fs(awsAccessKeyIdLength), profile.aws_access_key_id)
-		trunc(profile.aws_access_key_id, awsAccessKeyIdLength)
+		fmt.Printf(fs(awsAccessKeyIdLength), maskAccessKey(profile.aws_access_key_id, awsAccessKeyIdLength))
+		fmt.Printf("    ") //perhaps only one blank here
 
-		fmt.Printf(fs(regionLength), profile.region)
-		trunc(profile.region, regionLength)
+		if profile.region == "" {
+			if defaultConfig.region != "" {
+				fmt.Printf("[%."+strconv.Itoa(regionLength-2)+"s", defaultConfig.region)
+				if len(defaultConfig.region) > regionLength-2 {
+					fmt.Printf("...")
+				}
+				fmt.Printf("] ")
+				fmt.Printf(fs(regionLength-len(defaultConfig.region)-3+4), "                  ")
+			} else {
+				fmt.Printf(fs(regionLength), profile.region)
+				truncPrintf(profile.region, regionLength)
+			}
+		} else {
+			fmt.Printf(fs(regionLength), profile.region)
+			truncPrintf(profile.region, regionLength)
+		}
 
-		fmt.Printf(fs(outputLength), profile.output)
-		trunc(profile.output, outputLength)
+		if profile.output == "" {
+			if defaultConfig.output != "" {
+				fmt.Printf("[%."+strconv.Itoa(outputLength-2)+"s", defaultConfig.output)
+				if len(defaultConfig.output) > outputLength-2 {
+					fmt.Printf("...")
+				}
+				fmt.Printf("] ")
+				fmt.Printf(fs(outputLength-len(defaultConfig.output)-3+4), "                  ")
+			} else {
+				fmt.Printf(fs(outputLength), profile.output)
+				truncPrintf(profile.output, outputLength)
+			}
+		} else {
+			fmt.Printf(fs(outputLength), profile.output)
+			truncPrintf(profile.output, outputLength)
+		}
 
 		fmt.Printf("\n")
 	}
+
+	if len(profiles) > 0 {
+		fmt.Printf("\n")
+		fmt.Println("Profiles with * are active profiles. Profiles with region or output in [] are using the default config.")
+	}
 } //listProfiles
 
-//format string pattern
+//format string pattern to eg %-10.10s
 func fs(l int) string {
+	//- for left justify
+	//cut off after first number
+	//pad to last number
 	return "%-" + strconv.Itoa(l) + "." + strconv.Itoa(l) + "s"
 } //fs
 
-//truncate string and pad with ...
-func trunc(s string, l int) {
+func fs2(l int) string {
+	return "%-" + strconv.Itoa(l) + "." + strconv.Itoa(l) + "s"
+} //fs2
+
+//TODO: rename func
+//truncate string longer than l and if longer pad with "... " otherwise pad with "    "
+func truncPrintf(s string, l int) {
 	if len(s) > l {
 		fmt.Printf("... ")
 	} else {
 		fmt.Printf("    ")
 	}
-} //trunc
+} //truncPrintf
+
+func maskAccessKey(s string, l int) string {
+	var r string
+	if len(s) <= 4 {
+		r = s
+	} else if len(s) <= l {
+		last4 := s[len(s)-4:]
+		prefix := ""
+		for i := 0; i < len(s)-4; i++ {
+			prefix += "*"
+		}
+		r = prefix + last4
+	} else {
+		last4 := s[len(s)-4:]
+		prefix := ""
+		for i := 0; i < l-4-3; i++ {
+			prefix += "*"
+		}
+		r = "..." + prefix + last4
+	}
+	return r
+} //maskAccessKey
 
 func setDefaultProfile(fromSectionName string) {
 	defaultSection := credentialsFile.Section(ini.DefaultSection)
@@ -355,3 +417,12 @@ func setDefaultProfile(fromSectionName string) {
 
 	parse()
 } //setDefaultProfile
+
+func setEnvironmentVariables() {
+	if defaultProfile.aws_access_key_id != "" {
+		os.Setenv("AWS_ACCESS_KEY_ID", defaultProfile.aws_access_key_id)
+		os.Setenv("AWS_SECRET_ACCESS_KEY", defaultProfile.aws_secret_access_key)
+		//TODO:
+		//set AWS_DEFAULT_REGION
+	}
+} //setEnvironmentVariables
