@@ -45,7 +45,7 @@ var configFile *ini.File
 
 func main() {
 
-	listCommand := flag.NewFlagSet("list", flag.ExitOnError)
+	listCommand := flag.NewFlagSet("list", flag.ExitOnError) //since list doesn't require parameters, not sure if a FlagSet is needed
 	activateCommand := flag.NewFlagSet("activate", flag.ExitOnError)
 
 	if len(os.Args) > 3 {
@@ -57,9 +57,12 @@ func main() {
 	if len(os.Args) > 1 {
 		switch os.Args[1] {
 		case "list":
-			listCommand.Parse(os.Args[2:])
+			listCommand.Parse(make([]string, 0))
 		case "activate":
 			activateCommand.Parse(os.Args[2:])
+		case "help", "-help", "--help":
+			printUsage()
+			os.Exit(0)
 		default:
 			fmt.Println("ERROR: Unknown command!")
 			printUsage()
@@ -128,6 +131,7 @@ func parse() {
 func parseCredentials() {
 	credentialsFile = loadIni(getCredentialFilePath())
 
+	//creates new empty defaultCredentialsSection if it doesn't exist alredy
 	defaultCredentialsSection := credentialsFile.Section(ini.DefaultSection)
 
 	for _, credentialsSection := range credentialsFile.Sections() {
@@ -196,9 +200,17 @@ func parseConfig() {
 				if "output" == keyName {
 					defaultConfig.output = value
 					defaultProfile.output = value
+					if profile, ok := profiles[ini.DefaultSection]; ok {
+						profile.output = value
+						profiles[ini.DefaultSection] = profile
+					}
 				} else if "region" == keyName {
 					defaultConfig.region = value
 					defaultProfile.region = value
+					if profile, ok := profiles[ini.DefaultSection]; ok {
+						profile.region = value
+						profiles[ini.DefaultSection] = profile
+					}
 				}
 			} else {
 				profile, ok := profiles[sectionName]
@@ -208,7 +220,6 @@ func parseConfig() {
 					} else if "region" == keyName {
 						profile.region = value
 					}
-					//fmt.Printf("profile: %s\n", profile)
 					profiles[sectionName] = profile
 				}
 			}
@@ -216,17 +227,29 @@ func parseConfig() {
 		configs[sectionName] = config
 	}
 
-	foundProfileForDefault := false
+	//Mark the profiles matching the default profile including the default profile itself
+	//as active
+	foundProfileMatchingDefault := false
 	for sectionName, profile := range profiles {
 		if profile.aws_access_key_id == defaultProfile.aws_access_key_id {
-			foundProfileForDefault = true
+			foundProfileMatchingDefault = true
 			profile.isActive = true
+			//set region and output to "" as the default output will be used instead of the
+			//values of this profile
+			if sectionName != ini.DefaultSection {
+				profile.region = ""
+				profile.output = ""
+			}
 			profiles[sectionName] = profile
-			break
+			//break
 		}
 	}
 
-	if !foundProfileForDefault && defaultProfile.isActive {
+	//Only a default profile exists but no matching named profile
+	//Previously the default profile wasn't added to the map
+	//but since the default profile in this case is a "stand alone" profile
+	//it needs to be added
+	if !foundProfileMatchingDefault && defaultProfile.isActive {
 		profiles["default"] = defaultProfile
 	}
 } //parseConfig
