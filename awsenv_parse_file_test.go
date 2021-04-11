@@ -74,10 +74,23 @@ func TestEmptyFile(t *testing.T) {
 		t.Fail()
 	}
 
-	if len(configs) != 0 {
-		t.Errorf("TestEmptyFile: len(configs) is not 0: %d ", len(configs))
+	if len(configs) != 1 {
+		t.Errorf("TestEmptyFile: len(configs) is not 1: %d ", len(configs))
 		t.Fail()
 	}
+
+	config := configs[ini.DefaultSection]
+
+	if config.output != "" {
+		t.Errorf("TestOnlyDefaultSection: default config.output is not '': %s ", config.output)
+		t.Fail()
+	}
+
+	if config.region != "" {
+		t.Errorf("TestOnlyDefaultSection: default config.region is not '': %s ", config.region)
+		t.Fail()
+	}
+
 } //TestEmptyFile
 
 func TestOnlyDefaultSection(t *testing.T) {
@@ -126,7 +139,33 @@ func TestOnlyDefaultSection(t *testing.T) {
 
 	os.Setenv("AWS_CONFIG_FILE", "./testdata/only_default_config")
 	parseConfig()
-	//TODO: Test Cases
+
+	if defaultConfig.output != "json" {
+		t.Errorf("TestOnlyDefaultSection: defaultConfig.output is not 'json': %s ", defaultConfig.output)
+		t.Fail()
+	}
+
+	if defaultConfig.region != "us-east-1" {
+		t.Errorf("TestOnlyDefaultSection: defaultConfig.region is not 'us-east-1': %s ", defaultConfig.region)
+		t.Fail()
+	}
+
+	if len(configs) != 1 {
+		t.Errorf("TestOnlyDefaultSection: len(configs) is not 1: %d ", len(configs))
+		t.Fail()
+	}
+
+	config := configs[ini.DefaultSection]
+
+	if config.output != "json" {
+		t.Errorf("TestOnlyDefaultSection: default config.output is not 'json': %s ", config.output)
+		t.Fail()
+	}
+
+	if config.region != "us-east-1" {
+		t.Errorf("TestOnlyDefaultSection: default config.region is not 'us-east-1': %s ", config.region)
+		t.Fail()
+	}
 } //TestOnlyDefaultSection
 
 func TestProfileMatchingDefault(t *testing.T) {

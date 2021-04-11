@@ -198,7 +198,7 @@ func parseConfig() {
 		return
 	}
 
-	defaultConfigSection := credentialsFile.Section(ini.DefaultSection)
+	defaultConfigSection := configFile.Section(ini.DefaultSection)
 	defaultConfig.region = defaultConfigSection.Key("region").Value()
 	defaultConfig.output = defaultConfigSection.Key("output").Value()
 
