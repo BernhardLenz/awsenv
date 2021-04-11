@@ -1,7 +1,7 @@
 # awsenv
 AWS cli profile switcher.
 
-`awsenv` lists the content of aws' credentials and config files in a better readable format and makes it easier to switch the default profile.  
+`awsenv` lists the content of the aws credentials and config files in a better readable format and makes it easier to switch the default profile.  
 
 ## Install:
 #### MacOS
