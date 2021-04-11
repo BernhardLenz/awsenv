@@ -14,7 +14,7 @@ import (
 
 //TODO: test other keys than aws_access_key_id such as metadata_service_timeout in activate
 //TODO: test support path to config and credential files AWS_CONFIG_FILE AWS_SHARED_CREDENTIALS_FILE
-//TODO: test printing of default configs as part of a Profile line
+//TODO: test printing of default configs as part of a profile line
 //TODO: test export of e.g. AWS_CCESS_KEY_ID
 //TODO: Add versioning and printing of version
 //TODO: Write test cases
@@ -43,20 +43,15 @@ var configs = make(map[string]Config)
 var credentialsFile *ini.File
 var configFile *ini.File
 
-//method pointer which can be changed during test case execution
-var logFatalf = log.Fatalf
-var osExit = os.Exit
-
 func main() {
 
 	listCommand := flag.NewFlagSet("list", flag.ExitOnError) //since list doesn't require parameters, not sure if a FlagSet is needed
 	activateCommand := flag.NewFlagSet("activate", flag.ExitOnError)
 
 	if len(os.Args) > 3 {
-		fmt.Fprintf(os.Stderr, "ERROR: Too many arguments supplied.\n")
+		fmt.Println("ERROR: Too many arguments supplied.")
 		printUsage()
-		osExit(1)
-		return //During test case execution osExit may not actually exit
+		os.Exit(1)
 	}
 
 	if len(os.Args) > 1 {
@@ -67,13 +62,11 @@ func main() {
 			activateCommand.Parse(os.Args[2:])
 		case "help", "-help", "--help":
 			printUsage()
-			osExit(0)
-			return //During test case execution osExit may not actually exit
+			os.Exit(0)
 		default:
-			fmt.Fprintf(os.Stderr, "ERROR: Unknown command!\n")
+			fmt.Println("ERROR: Unknown command!")
 			printUsage()
-			osExit(1)
-			return //During test case execution osExit may not actually exit
+			os.Exit(1)
 		}
 	}
 
@@ -81,33 +74,31 @@ func main() {
 		parse()
 		listProfiles(profiles)
 
-		fmt.Printf("\nTo activate a different Profile run '%s activate <Profile>'", filepath.Base(os.Args[0]))
+		fmt.Printf("\nTo activate a different profile run '%s activate <profile>'", filepath.Base(os.Args[0]))
 	} else if activateCommand.Parsed() {
 		if len(os.Args) != 3 {
-			fmt.Fprintf(os.Stderr, "ERROR: Required parameter <Profile> missing for activate command!\n")
+			fmt.Println("ERROR: Required parameter <profile> missing for activate command!")
 			printUsage()
-			osExit(1)
-			return //During test case execution osExit may not actually exit
+			os.Exit(1)
 		}
 		activateProfileName := os.Args[2]
 		if activateProfileName == "default" {
-			logFatalf("ERROR: Cannot activate the 'default' Profile as it is already active!")
+			fmt.Println("ERROR: Cannot activate the 'default' profile as it is already active!")
+			os.Exit(1)
 		}
 		parse()
 
 		profile, ok := profiles[activateProfileName]
 		if !ok {
-			fmt.Fprintf(os.Stderr, "ERROR: Profile '%s' does not exist! Available profiles are: \n\n", activateProfileName)
+			fmt.Printf("ERROR: Profile '%s' does not exist! Available profiles are: \n\n", activateProfileName)
 			listProfiles(profiles)
-			osExit(1)
-			return //During test case execution osExit may not actually exit
+			os.Exit(1)
 		}
 
 		if profile.isActive {
-			fmt.Fprintf(os.Stderr, "Profile '%s' is already active! No changes applied. \n\n", activateProfileName)
+			fmt.Printf("Profile '%s' is already active! No changes applied. \n\n", activateProfileName)
 			listProfiles(profiles)
-			osExit(0)
-			return //During test case execution osExit may not actually exit
+			os.Exit(0)
 		}
 
 		setDefaultProfile(activateProfileName)
@@ -118,21 +109,19 @@ func main() {
 	}
 } //main
 
-func init() {
-	ini.DefaultSection = "default"
-}
-
 func printUsage() {
 	fmt.Println("Usage:")
 	fmt.Printf("%s [list]\n", filepath.Base(os.Args[0]))
 	fmt.Println(" Lists all available profiles.")
-	fmt.Printf("%s activate <Profile>\n", filepath.Base(os.Args[0]))
-	fmt.Println(" Activates a given Profile.")
+	fmt.Printf("%s activate <profile>\n", filepath.Base(os.Args[0]))
+	fmt.Println(" Activates a given profile.")
 	fmt.Println("")
-	fmt.Println("To create a new Profile use 'aws configure''")
+	fmt.Println("To create a new profile use 'aws configure''")
 } //printUsage
 
 func parse() {
+
+	ini.DefaultSection = "default"
 
 	parseCredentials()
 	parseConfig()
@@ -141,16 +130,9 @@ func parse() {
 
 func parseCredentials() {
 	credentialsFile = loadIni(getCredentialFilePath())
-	//During test case execution loadIni may actually return a nil if it doesn't find a file
-	if credentialsFile == nil {
-		return
-	}
 
-	//creates new empty defaultCredentialsSection if it doesn't exist already
+	//creates new empty defaultCredentialsSection if it doesn't exist alredy
 	defaultCredentialsSection := credentialsFile.Section(ini.DefaultSection)
-	defaultProfile.profileName = ini.DefaultSection
-	defaultProfile.aws_access_key_id = defaultCredentialsSection.Key("aws_access_key_id").Value()
-	defaultProfile.aws_secret_access_key = defaultCredentialsSection.Key("aws_secret_access_key").Value()
 
 	for _, credentialsSection := range credentialsFile.Sections() {
 		sectionName := credentialsSection.Name()
@@ -168,39 +150,45 @@ func parseCredentials() {
 			}
 		}
 		if "default" != sectionName {
+			if profile.aws_access_key_id == defaultCredentialsSection.Key("aws_access_key_id").Value() {
+				profile.isActive = true
+				defaultProfile = profile
+			}
 			profiles[sectionName] = profile
+		} else {
+			defaultProfile = profile
 		}
 	}
-
-	//Now mark the profiles that match the default as active
-	activeProfileFound := false
-	for profileName, profile := range profiles {
-		if profile.aws_access_key_id == defaultProfile.aws_access_key_id && profile.aws_access_key_id != "" {
-			profile.isActive = true
-			profiles[profileName] = profile
-			activeProfileFound = true
+	//Only default section in ini file
+	if defaultProfile.aws_access_key_id != "" {
+		if len(profiles) == 0 {
+			defaultProfile.isActive = true
+			profiles["default"] = defaultProfile
+		} else {
+			foundActive := false
+			for _, profile := range profiles {
+				if profile.isActive == true {
+					foundActive = true
+					break
+				}
+			}
+			if !foundActive {
+				defaultProfile.isActive = true
+				profiles["default"] = defaultProfile
+			}
 		}
 	}
-
-	//if there is no matching Profile then add the default Profile to the profiles map and make it active
-	if !activeProfileFound && defaultProfile.aws_access_key_id != "" {
-		defaultProfile.isActive = true
-		profiles["default"] = defaultProfile
-	}
-
 } //parseCredentials
 
 func parseConfig() {
 
 	configFile = loadIni(getConfigFilePath())
-	//During test case execution loadIni may actually return a nil if it doesn't find a file
-	if configFile == nil {
-		return
-	}
 
-	defaultConfigSection := credentialsFile.Section(ini.DefaultSection)
-	defaultConfig.region = defaultConfigSection.Key("region").Value()
-	defaultConfig.output = defaultConfigSection.Key("output").Value()
+	configFile, err := ini.Load(getConfigFilePath())
+	if err != nil {
+		fmt.Printf("Failed to read file: %v", err)
+		os.Exit(1)
+	}
 
 	for _, configSection := range configFile.Sections() {
 		var config Config
@@ -208,88 +196,69 @@ func parseConfig() {
 		for _, key := range configSection.Keys() {
 			keyName := key.Name()
 			value := key.Value()
-
-			if "output" == keyName {
-				config.output = value
-			} else if "region" == keyName {
-				config.region = value
+			if "default" == sectionName {
+				if "output" == keyName {
+					defaultConfig.output = value
+					defaultProfile.output = value
+					if profile, ok := profiles[ini.DefaultSection]; ok {
+						profile.output = value
+						profiles[ini.DefaultSection] = profile
+					}
+				} else if "region" == keyName {
+					defaultConfig.region = value
+					defaultProfile.region = value
+					if profile, ok := profiles[ini.DefaultSection]; ok {
+						profile.region = value
+						profiles[ini.DefaultSection] = profile
+					}
+				}
+			} else {
+				profile, ok := profiles[sectionName]
+				if ok {
+					if "output" == keyName {
+						profile.output = value
+					} else if "region" == keyName {
+						profile.region = value
+					}
+					profiles[sectionName] = profile
+				}
 			}
-
-			//	if "default" == sectionName {
-			//		if "output" == keyName {
-			//			defaultConfig.output = value
-			//			defaultProfile.output = value
-			//			if Profile, ok := profiles[ini.DefaultSection]; ok {
-			//				Profile.output = value
-			//				profiles[ini.DefaultSection] = Profile
-			//			}
-			//		} else if "region" == keyName {
-			//			defaultConfig.region = value
-			//			defaultProfile.region = value
-			//			if Profile, ok := profiles[ini.DefaultSection]; ok {
-			//				Profile.region = value
-			//				profiles[ini.DefaultSection] = Profile
-			//			}
-			//		}
-			//	} else {
-			//		Profile, ok := profiles[sectionName]
-			//		if ok {
-			//			if "output" == keyName {
-			//				Profile.output = value
-			//			} else if "region" == keyName {
-			//				Profile.region = value
-			//			}
-			//			profiles[sectionName] = Profile
-			//		}
-			//	}
-			//}
-			configs[sectionName] = config
 		}
+		configs[sectionName] = config
 	}
 
-	//Now set the corresponding fields in profiles
+	//Mark the profiles matching the default profile including the default profile itself
+	//as active
+	foundProfileMatchingDefault := false
 	for sectionName, profile := range profiles {
-		if config, ok := configs[sectionName]; ok {
-			profile.output = config.output
-			profile.region = config.region
+		if profile.aws_access_key_id == defaultProfile.aws_access_key_id {
+			foundProfileMatchingDefault = true
+			profile.isActive = true
+			//set region and output to "" as the default output will be used instead of the
+			//values of this profile
+			if sectionName != ini.DefaultSection {
+				profile.region = ""
+				profile.output = ""
+			}
 			profiles[sectionName] = profile
+			//break
 		}
 	}
-	defaultProfile.output = defaultConfig.output
-	defaultProfile.region = defaultConfig.region
 
-	////Mark the profiles matching the default Profile including the default Profile itself
-	////as active
-	//foundProfileMatchingDefault := false
-	//for sectionName, Profile := range profiles {
-	//	if Profile.aws_access_key_id == defaultProfile.aws_access_key_id {
-	//		foundProfileMatchingDefault = true
-	//		Profile.isActive = true
-	//		//set region and output to "" as the default output will be used instead of the
-	//		//values of this Profile
-	//		if sectionName != ini.DefaultSection {
-	//			Profile.region = ""
-	//			Profile.output = ""
-	//		}
-	//		profiles[sectionName] = Profile
-	//		//break
-	//	}
-	//}
-	//
-	////Only a default Profile exists but no matching named Profile
-	////Previously the default Profile wasn't added to the map
-	////but since the default Profile in this case is a "stand alone" Profile
-	////it needs to be added
-	//if !foundProfileMatchingDefault && defaultProfile.isActive {
-	//	profiles["default"] = defaultProfile
-	//}
+	//Only a default profile exists but no matching named profile
+	//Previously the default profile wasn't added to the map
+	//but since the default profile in this case is a "stand alone" profile
+	//it needs to be added
+	if !foundProfileMatchingDefault && defaultProfile.isActive {
+		profiles["default"] = defaultProfile
+	}
 } //parseConfig
 
 func loadIni(fileName string) *ini.File {
 	file, err := ini.Load(fileName)
 	if err != nil {
-		errMsg := "Failed to find or read file: " + fileName + ". %v"
-		logFatalf(errMsg, err)
+		log.Fatal("Failed to read file: %v", err)
+		os.Exit(1)
 	}
 	return file
 } //loadIni
@@ -305,7 +274,7 @@ func getConfigFilePath() string {
 func getAwsCliFilePath(ENV string, fileName string) string {
 	ENVVAL := os.Getenv(ENV)
 	if ENVVAL != "" {
-		return ENVVAL
+		return ENVVAL + "/" + fileName
 	}
 
 	return getUser().HomeDir + "/.aws/" + fileName
@@ -314,7 +283,8 @@ func getAwsCliFilePath(ENV string, fileName string) string {
 func getUser() *user.User {
 	usr, err := user.Current()
 	if err != nil {
-		logFatalf("%v", err)
+		log.Fatal(err)
+		os.Exit(1)
 	}
 	return usr
 } //getUser
@@ -400,7 +370,6 @@ func fs(l int) string {
 	return "%-" + strconv.Itoa(l) + "." + strconv.Itoa(l) + "s"
 } //fs
 
-//TODO: rename
 func fs2(l int) string {
 	return "%-" + strconv.Itoa(l) + "." + strconv.Itoa(l) + "s"
 } //fs2
@@ -441,7 +410,7 @@ func setDefaultProfile(fromSectionName string) {
 	defaultSection := credentialsFile.Section(ini.DefaultSection)
 
 	//make a backup of the current default section so it doesn't get lost
-	//the default section is only active if there is no matching Profile present
+	//the default section is only active if there is no matching profile present
 	if defaultProfile.isActive {
 		defaultBackupSectionName := "default-" + time.Now().Format("20060102150405")
 		credentialsFile.NewSection(defaultBackupSectionName)
