@@ -152,8 +152,6 @@ func TestProfileMatchingDefault(t *testing.T) {
 	}
 
 	if len(profiles) != 1 {
-		//mString :=
-		//msg := "TestProfileMatchingDefault: len(profiles) is not 1: %d \n " + profiles
 		t.Errorf("TestProfileMatchingDefault: len(profiles) is not 1: %d \n %v", len(profiles), profiles)
 		t.Fail()
 	}
@@ -161,24 +159,208 @@ func TestProfileMatchingDefault(t *testing.T) {
 	profile := profiles["profile_matching_default_credentials"]
 
 	if profile.profileName != "profile_matching_default_credentials" {
-		t.Errorf("TestProfileMatchingDefault: Profile.profileName is not 'profile_matching_default_credentials': %s ", profile.profileName)
+		t.Errorf("TestProfileMatchingDefault: profile_matching_default_credentials Profile.profileName is not 'profile_matching_default_credentials': %s ", profile.profileName)
 		t.Fail()
 	}
 
 	if profile.aws_access_key_id != "12345678901234567890" {
-		t.Errorf("TestProfileMatchingDefault: Profile.aws_access_key_id is not '12345678901234567890': %s ", profile.aws_access_key_id)
+		t.Errorf("TestProfileMatchingDefault: profile_matching_default_credentials Profile.aws_access_key_id is not '12345678901234567890': %s ", profile.aws_access_key_id)
 		t.Fail()
 	}
 
 	if !profile.isActive {
-		t.Errorf("TestProfileMatchingDefault: Profile.isActive is not true: %t ", profile.isActive)
+		t.Errorf("TestProfileMatchingDefault: profile_matching_default_credentials Profile.isActive is not true: %t ", profile.isActive)
 		t.Fail()
 	}
-	//
-	//
-	//os.Setenv("AWS_SHARED_CREDENTIALS_FILE", "./testdata/only_default_config")
-	//parseConfig()
 } //TestProfileMatchingDefault
+
+func TestMultipleProfileMatchingDefault(t *testing.T) {
+	t.Cleanup(resetState)
+
+	os.Setenv("AWS_SHARED_CREDENTIALS_FILE", "./testdata/two_profiles_matching_default_credentials")
+
+	parseCredentials()
+
+	if defaultProfile.profileName != "default" {
+		t.Errorf("TestMultipleProfileMatchingDefault: defaultProfile.profileName is not 'default': %s ", defaultProfile.profileName)
+		t.Fail()
+	}
+
+	if defaultProfile.isActive {
+		t.Errorf("TestMultipleProfileMatchingDefault: defaultProfile.isActive is not false: %t ", defaultProfile.isActive)
+		t.Fail()
+	}
+
+	if len(profiles) != 3 {
+		t.Errorf("TestMultipleProfileMatchingDefault: len(profiles) is not 3: %d \n %v", len(profiles), profiles)
+		t.Fail()
+	}
+
+	profile := profiles["profile1_matching_default_credentials"]
+
+	if profile.profileName != "profile1_matching_default_credentials" {
+		t.Errorf("TestMultipleProfileMatchingDefault: profile1_matching_default_credentials Profile.profileName is not 'profile_matching_default_credentials': %s ", profile.profileName)
+		t.Fail()
+	}
+
+	if !profile.isActive {
+		t.Errorf("TestMultipleProfileMatchingDefault: profile1_matching_default_credentials Profile.isActive is not true: %t ", profile.isActive)
+		t.Fail()
+	}
+
+	profile = profiles["profile2_matching_default_credentials"]
+
+	if profile.profileName != "profile2_matching_default_credentials" {
+		t.Errorf("TestMultipleProfileMatchingDefault: profile2_matching_default_credentials Profile.profileName is not 'profile2_matching_default_credentials': %s ", profile.profileName)
+		t.Fail()
+	}
+
+	if !profile.isActive {
+		t.Errorf("TestMultipleProfileMatchingDefault: profile2_matching_default_credentials Profile.isActive is not true: %t ", profile.isActive)
+		t.Fail()
+	}
+
+	profile = profiles["profile3_not_matching_default_credentials"]
+
+	if profile.profileName != "profile3_not_matching_default_credentials" {
+		t.Errorf("TestMultipleProfileMatchingDefault: profile3_not_matching_default_credentials Profile.profileName is not 'profile3_matching_default_credentials': %s ", profile.profileName)
+		t.Fail()
+	}
+
+	if profile.isActive {
+		t.Errorf("TestMultipleProfileMatchingDefault: profile3_not_matching_default_credentials Profile.isActive is true: %t ", profile.isActive)
+		t.Fail()
+	}
+} //TestMultipleProfileMatchingDefault
+
+func TestDuplicateProfiles(t *testing.T) {
+	t.Cleanup(resetState)
+
+	os.Setenv("AWS_SHARED_CREDENTIALS_FILE", "./testdata/duplicate_profiles_credentials")
+
+	parseCredentials()
+
+	if defaultProfile.profileName != "default" {
+		t.Errorf("TestDuplicateProfiles: defaultProfile.profileName is not 'default': %s ", defaultProfile.profileName)
+		t.Fail()
+	}
+
+	//ini picks the 2nd default profile
+	if defaultProfile.aws_access_key_id != "12345678901234567891" {
+		t.Errorf("TestDuplicateProfiles: defaultProfile.aws_access_key_id is not '12345678901234567891': %s ", defaultProfile.aws_access_key_id)
+		t.Fail()
+	}
+
+	if !defaultProfile.isActive {
+		t.Errorf("TestDuplicateProfiles: defaultProfile.isActive is not active: %t ", defaultProfile.isActive)
+		t.Fail()
+	}
+
+	if len(profiles) != 2 {
+		t.Errorf("TestDuplicateProfiles: len(profiles) is not 2: %d \n %v", len(profiles), profiles)
+		t.Fail()
+	}
+
+	profile := profiles["duplicate"]
+
+	if profile.profileName != "duplicate" {
+		t.Errorf("TestDuplicateProfiles: duplicate Profile.profileName is not 'duplicate': %s ", profile.profileName)
+		t.Fail()
+	}
+
+	//ini picks the 2nd duplicate profile
+	if profile.aws_access_key_id != "12345678901234567893" {
+		t.Errorf("TestDuplicateProfiles: duplicate Profile.aws_access_key_id is not '12345678901234567893': %s ", defaultProfile.aws_access_key_id)
+		t.Fail()
+	}
+
+	if profile.isActive {
+		t.Errorf("TestDuplicateProfiles: duplicate Profile.isActive is active: %t ", profile.isActive)
+		t.Fail()
+	}
+
+} //TestDuplicateProfiles
+
+func TestDuplicateMixedCaseProfiles(t *testing.T) {
+	t.Cleanup(resetState)
+
+	os.Setenv("AWS_SHARED_CREDENTIALS_FILE", "./testdata/duplicate_mixed_case_profiles_credentials")
+
+	parseCredentials()
+
+	if defaultProfile.profileName != "default" {
+		t.Errorf("TestDuplicateMixedCaseProfiles: defaultProfile.profileName is not 'default': %s ", defaultProfile.profileName)
+		t.Fail()
+	}
+
+	//awsenv configures ini picks the lower case default profile
+	if defaultProfile.aws_access_key_id != "12345678901234567890" {
+		t.Errorf("TestDuplicateMixedCaseProfiles: defaultProfile.aws_access_key_id is not '12345678901234567891': %s ", defaultProfile.aws_access_key_id)
+		t.Fail()
+	}
+
+	if !defaultProfile.isActive {
+		t.Errorf("TestDuplicateMixedCaseProfiles: defaultProfile.isActive is not active: %t ", defaultProfile.isActive)
+		t.Fail()
+	}
+
+	if len(profiles) != 4 {
+		t.Errorf("TestDuplicateMixedCaseProfiles: len(profiles) is not 4 %d \n %v", len(profiles), profiles)
+		t.Fail()
+	}
+
+	profile := profiles["DEFAULT"]
+
+	if profile.profileName != "DEFAULT" {
+		t.Errorf("TestDuplicateMixedCaseProfiles: DEFAULT Profile.profileName is not 'DEFAULT': %s ", profile.profileName)
+		t.Fail()
+	}
+
+	if profile.aws_access_key_id != "12345678901234567891" {
+		t.Errorf("TestDuplicateMixedCaseProfiles: DEFAULT Profile.aws_access_key_id is not '12345678901234567891': %s ", defaultProfile.aws_access_key_id)
+		t.Fail()
+	}
+
+	if profile.isActive {
+		t.Errorf("TestDuplicateMixedCaseProfiles: DEFAULT Profile.isActive is active: %t ", profile.isActive)
+		t.Fail()
+	}
+
+	profile = profiles["duplicate"]
+
+	if profile.profileName != "duplicate" {
+		t.Errorf("TestDuplicateMixedCaseProfiles: duplicate Profile.profileName is not 'duplicate': %s ", profile.profileName)
+		t.Fail()
+	}
+
+	if profile.aws_access_key_id != "12345678901234567892" {
+		t.Errorf("TestDuplicateMixedCaseProfiles: duplicate Profile.aws_access_key_id is not '12345678901234567892': %s ", profile.aws_access_key_id)
+		t.Fail()
+	}
+
+	if profile.isActive {
+		t.Errorf("TestDuplicateMixedCaseProfiles: duplicate Profile.isActive is active: %t ", profile.isActive)
+		t.Fail()
+	}
+
+	profile = profiles["DUPLICATE"]
+
+	if profile.profileName != "DUPLICATE" {
+		t.Errorf("TestDuplicateMixedCaseProfiles: DUPLICATE Profile.profileName is not 'DUPLICATE': %s ", profile.profileName)
+		t.Fail()
+	}
+
+	if profile.aws_access_key_id != "12345678901234567893" {
+		t.Errorf("TestDuplicateMixedCaseProfiles: DUPLICATE Profile.aws_access_key_id is not '12345678901234567892': %s ", profile.aws_access_key_id)
+		t.Fail()
+	}
+
+	if profile.isActive {
+		t.Errorf("TestDuplicateMixedCaseProfiles: DUPLICATE Profile.isActive is active: %t ", profile.isActive)
+		t.Fail()
+	}
+
+} //TestDuplicateMixedCaseProfiles
 
 func resetState() {
 	defaultProfile = Profile{}
