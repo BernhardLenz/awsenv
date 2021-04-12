@@ -281,6 +281,7 @@ func parseConfig() {
 	//if !foundProfileMatchingDefault && defaultProfile.isActive {
 	//	profiles["default"] = defaultProfile
 	//}
+
 } //parseConfig
 
 func loadIni(fileName string) *ini.File {
