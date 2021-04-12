@@ -93,6 +93,60 @@ func TestEmptyFile(t *testing.T) {
 
 } //TestEmptyFile
 
+func TestEmptyConfigFile(t *testing.T) {
+	t.Cleanup(resetState)
+
+	os.Setenv("AWS_SHARED_CREDENTIALS_FILE", "./testdata/one_profile_matching_default_credentials")
+
+	parseCredentials()
+
+	os.Setenv("AWS_CONFIG_FILE", "./testdata/empty_file")
+	parseConfig()
+
+	if defaultConfig.output != "" {
+		t.Errorf("TestOnlyDefaultSection: defaultConfig.output is not '': %s ", defaultConfig.output)
+		t.Fail()
+	}
+
+	if defaultConfig.region != "" {
+		t.Errorf("TestOnlyDefaultSection: defaultConfig.region is not 'us-east-1': %s ", defaultConfig.region)
+		t.Fail()
+	}
+
+	config := configs[ini.DefaultSection]
+	profile := profiles[ini.DefaultSection]
+
+	if config.output != "" {
+		t.Errorf("TestOnlyDefaultSection: default config.output is not '': %s ", config.output)
+		t.Fail()
+	}
+
+	if config.region != "" {
+		t.Errorf("TestOnlyDefaultSection: default config.region is not '': %s ", config.region)
+		t.Fail()
+	}
+
+	if defaultProfile.region != "" {
+		t.Errorf("TestOnlyDefaultSection: defaultProfile.region is not '': %s ", defaultProfile.region)
+		t.Fail()
+	}
+
+	if defaultProfile.output != "" {
+		t.Errorf("TestOnlyDefaultSection: defaultProfile.output is not '': %s ", defaultProfile.output)
+		t.Fail()
+	}
+
+	if profile.region != "" {
+		t.Errorf("TestOnlyDefaultSection: default Profile.region is not '': %s ", profile.region)
+		t.Fail()
+	}
+
+	if profile.output != "" {
+		t.Errorf("TestOnlyDefaultSection: default Profile.output is not '': %s ", profile.output)
+		t.Fail()
+	}
+} //TestOnlyDefaultSection
+
 func TestOnlyDefaultSection(t *testing.T) {
 	t.Cleanup(resetState)
 
@@ -115,6 +169,16 @@ func TestOnlyDefaultSection(t *testing.T) {
 		t.Fail()
 	}
 
+	if defaultProfile.region != "" {
+		t.Errorf("TestOnlyDefaultSection: defaultProfile.region is not '': %s ", defaultProfile.region)
+		t.Fail()
+	}
+
+	if defaultProfile.output != "" {
+		t.Errorf("TestOnlyDefaultSection: defaultProfile.output is not '': %s ", defaultProfile.output)
+		t.Fail()
+	}
+
 	if len(profiles) != 1 {
 		t.Errorf("TestOnlyDefaultSection: len(profiles) is not 1: %d ", len(profiles))
 		t.Fail()
@@ -123,17 +187,27 @@ func TestOnlyDefaultSection(t *testing.T) {
 	profile := profiles[ini.DefaultSection]
 
 	if profile.profileName != "default" {
-		t.Errorf("TestOnlyDefaultSection: Profile.profileName is not 'default': %s ", defaultProfile.profileName)
+		t.Errorf("TestOnlyDefaultSection: Profile.profileName is not 'default': %s ", profile.profileName)
 		t.Fail()
 	}
 
 	if profile.aws_access_key_id != "12345678901234567890" {
-		t.Errorf("TestOnlyDefaultSection: Profile.aws_access_key_id is not '12345678901234567890': %s ", defaultProfile.aws_access_key_id)
+		t.Errorf("TestOnlyDefaultSection: Profile.aws_access_key_id is not '12345678901234567890': %s ", profile.aws_access_key_id)
 		t.Fail()
 	}
 
 	if !profile.isActive {
-		t.Errorf("TestOnlyDefaultSection: Profile.isActive is not true: %t ", defaultProfile.isActive)
+		t.Errorf("TestOnlyDefaultSection: default Profile.isActive is not true: %t ", profile.isActive)
+		t.Fail()
+	}
+
+	if profile.region != "" {
+		t.Errorf("TestOnlyDefaultSection: default Profile.region is not '': %s ", profile.region)
+		t.Fail()
+	}
+
+	if profile.output != "" {
+		t.Errorf("TestOnlyDefaultSection: default Profile.output is not '': %s ", profile.output)
 		t.Fail()
 	}
 
@@ -156,6 +230,7 @@ func TestOnlyDefaultSection(t *testing.T) {
 	}
 
 	config := configs[ini.DefaultSection]
+	profile = profiles[ini.DefaultSection]
 
 	if config.output != "json" {
 		t.Errorf("TestOnlyDefaultSection: default config.output is not 'json': %s ", config.output)
@@ -164,6 +239,26 @@ func TestOnlyDefaultSection(t *testing.T) {
 
 	if config.region != "us-east-1" {
 		t.Errorf("TestOnlyDefaultSection: default config.region is not 'us-east-1': %s ", config.region)
+		t.Fail()
+	}
+
+	if defaultProfile.region != "us-east-1" {
+		t.Errorf("TestOnlyDefaultSection: defaultProfile.region is not 'us-east-1': %s ", defaultProfile.region)
+		t.Fail()
+	}
+
+	if defaultProfile.output != "json" {
+		t.Errorf("TestOnlyDefaultSection: defaultProfile.output is not 'json': %s ", defaultProfile.output)
+		t.Fail()
+	}
+
+	if profile.region != "us-east-1" {
+		t.Errorf("TestOnlyDefaultSection: default Profile.region is not 'us-east-1': %s ", profile.region)
+		t.Fail()
+	}
+
+	if profile.output != "json" {
+		t.Errorf("TestOnlyDefaultSection: default Profile.output is not 'json': %s ", profile.output)
 		t.Fail()
 	}
 } //TestOnlyDefaultSection

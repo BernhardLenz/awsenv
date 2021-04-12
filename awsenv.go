@@ -13,11 +13,9 @@ import (
 )
 
 //TODO: test other keys than aws_access_key_id such as metadata_service_timeout in activate
-//TODO: test support path to config and credential files AWS_CONFIG_FILE AWS_SHARED_CREDENTIALS_FILE
 //TODO: test printing of default configs as part of a Profile line
 //TODO: test export of e.g. AWS_CCESS_KEY_ID
 //TODO: Add versioning and printing of version
-//TODO: Write test cases
 //TODO: comment methods
 
 type Profile struct {
