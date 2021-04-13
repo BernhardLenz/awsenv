@@ -22,7 +22,7 @@ func TestInvalidFile(t *testing.T) {
 			fmt.Fprintln(os.Stderr)
 			errors = append(errors, fmt.Sprintf(format, args))
 		} else {
-			fmt.Fprintf(os.Stderr, format)
+			fmt.Fprint(os.Stderr, format)
 			fmt.Fprintln(os.Stderr)
 			errors = append(errors, format)
 		}

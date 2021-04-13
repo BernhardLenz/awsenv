@@ -60,9 +60,10 @@ func main() {
 	if len(os.Args) > 1 {
 		switch os.Args[1] {
 		case "list":
-			listCommand.Parse(make([]string, 0))
+			//TODO: handle error
+			_ = listCommand.Parse(make([]string, 0))
 		case "activate":
-			activateCommand.Parse(os.Args[2:])
+			_ = activateCommand.Parse(os.Args[2:])
 		case "help", "-help", "--help":
 			printUsage()
 			osExit(0)
@@ -399,11 +400,6 @@ func fs(l int) string {
 	return "%-" + strconv.Itoa(l) + "." + strconv.Itoa(l) + "s"
 } //fs
 
-//TODO: rename
-func fs2(l int) string {
-	return "%-" + strconv.Itoa(l) + "." + strconv.Itoa(l) + "s"
-} //fs2
-
 //TODO: rename func
 //truncate string longer than l and if longer pad with "... " otherwise pad with "    "
 func truncPrintf(s string, l int) {
@@ -443,12 +439,12 @@ func setDefaultProfile(fromSectionName string) {
 	//the default section is only active if there is no matching Profile present
 	if defaultProfile.isActive {
 		defaultBackupSectionName := "default-" + time.Now().Format("20060102150405")
-		credentialsFile.NewSection(defaultBackupSectionName)
+		_, _ = credentialsFile.NewSection(defaultBackupSectionName)
 		defaultBackupSection := credentialsFile.Section(defaultBackupSectionName)
 		for _, key := range defaultSection.Keys() {
 			keyName := key.Name()
 			value := key.Value()
-			defaultBackupSection.NewKey(keyName, value)
+			_, _ = defaultBackupSection.NewKey(keyName, value)
 		}
 	}
 
@@ -461,10 +457,11 @@ func setDefaultProfile(fromSectionName string) {
 	for _, key := range fromSection.Keys() {
 		keyName := key.Name()
 		value := key.Value()
-		defaultSection.NewKey(keyName, value)
+		_, _ = defaultSection.NewKey(keyName, value)
 	}
 
-	credentialsFile.SaveTo(getUser().HomeDir + "/.aws/credentials")
+	//TODO: handle error
+	_ = credentialsFile.SaveTo(getUser().HomeDir + "/.aws/credentials")
 
 	fmt.Printf("Activated Profile '%s'\n\n", fromSectionName)
 
