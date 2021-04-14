@@ -4,10 +4,15 @@ AWS cli profile switcher.
 `awsenv` lists the content of the aws credentials and config files in a better readable format and makes it easier to switch the default profile.  
 
 ## Install:
-#### MacOS
-Use Choco (details to follow)
 #### Windows
-Use Homebrew (details to follow)
+Using Choco
+```sh
+$ choco install awsenv
+```
+
+#### MacOS
+Using Homebrew 
+(details to follow)
 
 ## Usage:
 ### List all available profiles:
