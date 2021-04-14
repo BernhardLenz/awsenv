@@ -12,6 +12,8 @@ import (
 	"time"
 )
 
+const VERSION string = "0.1.0-beta"
+
 //TODO: test other keys than aws_access_key_id such as metadata_service_timeout in activate
 //TODO: test printing of default configs as part of a Profile line
 //TODO: test export of e.g. AWS_CCESS_KEY_ID
@@ -122,13 +124,21 @@ func init() {
 }
 
 func printUsage() {
-	fmt.Println("Usage:")
-	fmt.Printf("%s [list]\n", filepath.Base(os.Args[0]))
-	fmt.Println(" Lists all available profiles.")
-	fmt.Printf("%s activate <Profile>\n", filepath.Base(os.Args[0]))
-	fmt.Println(" Activates a given Profile.")
 	fmt.Println("")
-	fmt.Println("To create a new Profile use 'aws configure''")
+	fmt.Println("Usage:")
+	fmt.Println("")
+	fmt.Printf("  %s [list]\n", filepath.Base(os.Args[0]))
+	fmt.Println("      Lists all available profiles.")
+	fmt.Println("")
+	fmt.Printf("  %s activate <Profile>\n", filepath.Base(os.Args[0]))
+	fmt.Println("      Activates a given Profile.")
+	fmt.Println("")
+	fmt.Printf("  %s help\n", filepath.Base(os.Args[0]))
+	fmt.Println("      Displays help information.")
+	fmt.Println("")
+	fmt.Println("To create a new Profile use 'aws configure'.")
+	fmt.Println("")
+	fmt.Println("Version: awsenv " + VERSION)
 } //printUsage
 
 func parse() {
